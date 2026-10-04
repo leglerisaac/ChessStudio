@@ -19,6 +19,24 @@ NON_CLOSED_TRACKS = {"production", "beta", "qa", "internal"}
 ACTIVE_RELEASE_STATUSES = {"completed", "inProgress"}
 
 
+def check_play_response(response, stage: str) -> None:
+    """Include Play's useful error message without dumping response headers or credentials."""
+    try:
+        response.raise_for_status()
+    except Exception:
+        try:
+            error = response.json().get("error", {})
+        except (ValueError, TypeError, AttributeError):
+            error = {}
+        message = error.get("message") if isinstance(error, dict) else None
+        if isinstance(message, str) and message.strip():
+            status = getattr(response, "status_code", "unknown")
+            raise RuntimeError(
+                f"Play {stage} failed (HTTP {status}): {message.strip()[:1000]}"
+            ) from None
+        raise
+
+
 def select_closed_track(tracks: list[dict], requested: str = "") -> str:
     """Choose an existing, active phone/tablet closed test without guessing."""
     eligible = {
@@ -53,11 +71,11 @@ def select_closed_track(tracks: list[dict], requested: str = "") -> str:
 def publish_bundle(session, bundle: Path, name: str, notes: str, track_name: str = "") -> int:
     """Resolve the closed track, upload a bundle, assign it, then commit."""
     response = session.post(f"{API}/edits", json={}, timeout=30)
-    response.raise_for_status()
+    check_play_response(response, "create edit")
     edit_id = quote(str(response.json()["id"]), safe="")
 
     response = session.get(f"{API}/edits/{edit_id}/tracks", timeout=30)
-    response.raise_for_status()
+    check_play_response(response, "list tracks")
     track = select_closed_track(response.json().get("tracks", []), track_name)
     print(f"Targeting existing Play closed testing track: {track}", flush=True)
 
@@ -69,7 +87,7 @@ def publish_bundle(session, bundle: Path, name: str, notes: str, track_name: str
             data=artifact,
             timeout=300,
         )
-    response.raise_for_status()
+    check_play_response(response, "upload App Bundle")
     version_code = int(response.json()["versionCode"])
     if not 1 <= version_code < 2_100_000_000:
         raise ValueError("Play returned an invalid bundle version code")
@@ -85,7 +103,7 @@ def publish_bundle(session, bundle: Path, name: str, notes: str, track_name: str
         json={"track": track, "releases": [release]},
         timeout=30,
     )
-    response.raise_for_status()
+    check_play_response(response, "update closed track")
 
     # A pending Play review must not be silently cancelled by a later CI build.
     response = session.post(
@@ -93,7 +111,7 @@ def publish_bundle(session, bundle: Path, name: str, notes: str, track_name: str
         params={"changesInReviewBehavior": "ERROR_IF_IN_REVIEW"},
         timeout=30,
     )
-    response.raise_for_status()
+    check_play_response(response, "commit release")
     return version_code
 
 

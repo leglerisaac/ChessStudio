@@ -16,9 +16,10 @@ TRACKS = {"tracks": [
 
 
 class Response:
-    def __init__(self, value=None, error=None):
+    def __init__(self, value=None, error=None, status_code=403):
         self.value = value or {}
         self.error = error
+        self.status_code = status_code
 
     def json(self):
         return self.value
@@ -95,6 +96,16 @@ class PublishPlayTests(unittest.TestCase):
     def test_failed_upload_does_not_change_track_or_commit(self):
         session = Session([Response({"id": "17"}), Response(TRACKS), Response(error=RuntimeError("upload failed"))])
         with self.assertRaisesRegex(RuntimeError, "upload failed"):
+            publish_bundle(session, self.bundle, "Chess Studio 1.1", "Updates")
+        self.assertEqual(len(session.calls), 3)
+
+    def test_failed_upload_shows_google_play_error_message(self):
+        error = Response(
+            {"error": {"message": "The upload key certificate does not match"}},
+            error=RuntimeError("403 Forbidden"),
+        )
+        session = Session([Response({"id": "17"}), Response(TRACKS), error])
+        with self.assertRaisesRegex(RuntimeError, "Play upload App Bundle failed \\(HTTP 403\\): The upload key certificate does not match"):
             publish_bundle(session, self.bundle, "Chess Studio 1.1", "Updates")
         self.assertEqual(len(session.calls), 3)
 
