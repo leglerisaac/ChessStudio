@@ -25,14 +25,16 @@ export function expandedFamilies(savedExpanded) {
 }
 
 // Synthetic family for imported PGN lines. It is not part of the generated catalog, so the reference
-// guards must ignore it. Its lines bypass the family-set check at every level, but the level's own
-// length limits still apply to them.
+// guards must ignore it, and no study level hides it: the user's own lines are not the "rare theory"
+// a level is meant to filter out.
 const CUSTOM_FAMILY = 'custom-repertoire';
 
 // Lines shorter than this many plies count as short sidelines, except family main lines.
 export const SHORT_LINE_PLY = 8;
 export const BEGINNER_MAX_PLY = 10;
 export const LINE_LIMIT = { beginner:8, intermediate:14 };
+
+const byLengthThenName = (a, b) => a.moves.length - b.moves.length || a.name.localeCompare(b.name);
 
 export function openingForLevel(opening, level, showShortLines) {
   const custom = opening.id === CUSTOM_FAMILY;
@@ -41,9 +43,15 @@ export function openingForLevel(opening, level, showShortLines) {
   const allowed = level === 'beginner' ? BEGINNER_FAMILIES : INTERMEDIATE_FAMILIES;
   if (!custom && !allowed.has(opening.name)) return null;
   let lines = opening.lines.filter(keep);
-  if (level === 'beginner') lines = lines.filter(line => line.moves.length <= BEGINNER_MAX_PLY || line.name === 'Main line');
-  lines.sort((a, b) => a.moves.length - b.moves.length || a.name.localeCompare(b.name));
-  lines = lines.slice(0, level === 'beginner' ? LINE_LIMIT.beginner : LINE_LIMIT.intermediate);
+  if (level === 'beginner' && !custom) lines = lines.filter(line => line.moves.length <= BEGINNER_MAX_PLY || line.name === 'Main line');
+  lines.sort(byLengthThenName);
+  // The caps trim extra theory, so they must not drop what the rules above exempt: the imported
+  // repertoire keeps every line, and a family's own main line always survives the cap.
+  if (!custom) {
+    const limit = level === 'beginner' ? LINE_LIMIT.beginner : LINE_LIMIT.intermediate;
+    const main = lines.find(line => line.name === 'Main line');
+    lines = main && !lines.slice(0, limit).includes(main) ? [...lines.slice(0, limit - 1), main].sort(byLengthThenName) : lines.slice(0, limit);
+  }
   return lines.length ? { ...opening, lines, description:LINE_DESCRIPTION(lines.length, level) } : null;
 }
 

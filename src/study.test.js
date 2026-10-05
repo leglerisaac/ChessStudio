@@ -66,7 +66,7 @@ describe('study-level line selection', () => {
     expect(catalog.length).toBeGreaterThan(0);
     for (const opening of catalog) expect(opening.lines.length).toBeLessThanOrEqual(INTERMEDIATE_LINES);
   });
-  it('keeps a long main line at beginner level when the family is small enough to keep it', () => {
+  it('keeps a long main line at beginner level', () => {
     const opening = { id:'italian-game', name:'Italian Game', lines:[
       { id:'line-main', name:'Main line', moves:Array.from({ length:12 }, (_, i) => 'move' + i) },
       { id:'line-sideline', name:'Long sideline', moves:Array.from({ length:8 }, (_, i) => 'move' + i) },
@@ -92,14 +92,28 @@ describe('study-level line selection', () => {
     expect(openingForLevel(grob, 'beginner', true)).toBeNull();
     expect(openingForLevel(grob, 'advanced', true).name).toBe('Grob Opening');
   });
-  it('keeps the imported custom repertoire past the family-set check at every level', () => {
+  it('keeps the imported repertoire at every level, however long the imported lines are', () => {
     const short = { ...custom, lines:[{ id:'custom-short', name:'Imported line', moves:['e4','e5','Nf3','Nc6','Bc4'] }] };
     for (const level of STUDY_LEVELS) expect(openingForLevel(short, level, false)?.id).toBe('custom-repertoire');
     // The bypass is keyed on the synthetic id, not on the family name.
     expect(openingForLevel({ ...short, id:'not-imported' }, 'beginner', false)).toBeNull();
     expect(openingForLevel({ ...short, id:'not-imported' }, 'intermediate', false)).toBeNull();
-    // A long import is still hidden by the beginner length limit, exactly as before the extraction.
-    expect(openingForLevel(custom, 'beginner', false)).toBeNull();
-    for (const level of ['intermediate','advanced']) expect(openingForLevel(custom, level, false).lines).toHaveLength(1);
+    // This 12-ply import used to empty the family at beginner level, hiding the whole repertoire.
+    for (const level of STUDY_LEVELS) expect(openingForLevel(custom, level, false).lines).toHaveLength(1);
+  });
+  it('does not cap the imported repertoire at the level line limits', () => {
+    const many = { ...custom, lines:Array.from({ length:30 }, (_, i) => ({ id:'custom-' + i, name:'Imported line ' + i, moves:['e4','e5','Nf3','Nc6','Bb5','a6','Ba4','Nf6','O-O','Be7','Re1','b5'] })) };
+    for (const level of STUDY_LEVELS) {
+      const leveled = openingForLevel(many, level, false);
+      expect(leveled?.id).toBe('custom-repertoire');
+      expect(leveled.lines).toHaveLength(30);
+    }
+  });
+  it('keeps the main line of every family the level shows', () => {
+    for (const level of ['beginner','intermediate']) for (const showShortLines of [true, false]) {
+      const shown = levelCatalogFor(OPENINGS, level, showShortLines);
+      expect(shown.length).toBeGreaterThan(0);
+      for (const opening of shown) expect(opening.lines.some(line => line.name === 'Main line'), opening.name + ' at ' + level).toBe(true);
+    }
   });
 });
