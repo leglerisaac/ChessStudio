@@ -10,6 +10,8 @@ const handlers = {};
 // main.js registers more than one click listener (the action router and the native link bridge), so
 // dispatch to each of them the way a real click would, and only claim the selector we simulate.
 const click = dataset => handlers.click.forEach(handler => handler({ target: { closest:selector => (selector.includes('[data-action]') ? { dataset } : null) } }));
+const change = target => handlers.change.forEach(handler => handler({ type:'change', target:{ ...target, matches:selector => (selector === '[data-line]' ? Boolean(target.dataset?.line) : selector === '[data-role]' ? Boolean(target.dataset?.role) : false) } }));
+const startButtons = () => [...app.innerHTML.matchAll(/data-action="start"([^>]*)>/g)].map(match => match[1].includes('disabled'));
 const expandedFamilies = () => app.innerHTML.split('<article class="opening-card ').slice(1).filter(part => part.startsWith('expanded')).map(part => (part.match(/data-action="expand" data-id="([^"]+)"/) || [])[1]);
 
 beforeAll(async () => {
@@ -42,6 +44,22 @@ describe('application screens', () => {
       expect(app.innerHTML).toContain('<h1>Openings</h1>');
       expect(expandedFamilies()).toEqual([DEFAULT_EXPANDED_FAMILY]);
     }
+  });
+  it('never offers a drill the practising side gets no move in', () => {
+    click({ action:'home' });
+    change({ id:'', dataset:{ line:'english-opening-main-line' }, checked:true });
+    click({ action:'level', id:'beginner' });
+    change({ id:'side', value:'black', dataset:{} });
+    click({ action:'level', id:'beginner' });
+    expect(app.innerHTML).toContain('Drill 0 lines');
+    expect(startButtons().every(disabled => disabled)).toBe(true);
+    click({ action:'start' });
+    expect(app.innerHTML).toContain('<h1>Openings</h1>');
+    change({ id:'side', value:'white', dataset:{} });
+    click({ action:'level', id:'beginner' });
+    expect(app.innerHTML).toContain('Drill 1 line');
+    expect(startButtons().some(disabled => !disabled)).toBe(true);
+    change({ id:'', dataset:{ line:'english-opening-main-line' }, checked:false });
   });
   it('renders the dashboard and progress screens', () => {
     click({ action:'dashboard' });

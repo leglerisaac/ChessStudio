@@ -18,6 +18,13 @@ export function createDrill(line, color = line.repertoireColor) {
   return { line, color, positions, prompts };
 }
 
+// Plies alternate White, Black, White, ... from the opening position, so a side only gets a move
+// once the line reaches its own first ply. Kept free of chess.js because the drill pool is filtered
+// on every render; the test suite pins it to createDrill.
+export function isLinePlayable(line, color = line.repertoireColor) {
+  return color === 'white' ? line.moves.length >= 1 : line.moves.length >= 2;
+}
+
 export function drillTitle(line) {
   const opening = String(line?.openingName || '').trim();
   const variation = String(line?.name || '').trim();

@@ -1,6 +1,6 @@
 import { Chess } from 'chess.js';
 import { OPENINGS, allLines } from './openings.js';
-import { chooseTheoryMove, createDrill, drillTitle, eligibleSelectedLines, parseMove, weightedPick } from './drill.js';
+import { chooseTheoryMove, createDrill, drillTitle, eligibleSelectedLines, isLinePlayable, parseMove, weightedPick } from './drill.js';
 import { filterOpeningLines, openingMatchesSearch } from './opening-search.js';
 import { filterFavoriteOpenings } from './favorites.js';
 import { buildPositionIndex, coverageByOpening, coverageForLines, dueReviewKeys, linesToPgn, openingInsight, parsePgnCollection, positionKey, positionOptions, updatePositionStat } from './learning.js';
@@ -37,7 +37,8 @@ function availableDrillLines(){
   const eligible=new Set(levelCatalog().flatMap(o=>o.lines.map(l=>l.id)));
   return eligibleSelectedLines(workingLines(),state.selected,eligible).filter(l=>{
     const side=state.side==='repertoire'?l.repertoireColor:state.side;
-    return lineRole(l)==='both'||lineRole(l)===side;
+    // A line the practising side never moves in would play itself and finish with no attempts.
+    return (lineRole(l)==='both'||lineRole(l)===side)&&isLinePlayable(l,side);
   });
 }
 function challengeLines(d=state.challengeDifficulty){const allowed=d==='common'?BEGINNER:d==='varied'?INTERMEDIATE:null,per=d==='common'?10:d==='varied'?28:Infinity;return workingOpenings().filter(o=>o.id==='custom-repertoire'||!allowed||allowed.has(o.name)).flatMap(o=>o.lines.filter(l=>l.moves.length>=8).sort((a,b)=>b.moves.length-a.moves.length).slice(0,per).map(l=>({...l,openingId:o.id,openingName:o.name})));}

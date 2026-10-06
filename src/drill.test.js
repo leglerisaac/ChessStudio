@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { OPENINGS, allLines } from './openings.js';
-import { chooseTheoryMove, createDrill, drillTitle, eligibleSelectedLines, linePositions, theoryOptions, weightedPick } from './drill.js';
+import { chooseTheoryMove, createDrill, drillTitle, eligibleSelectedLines, isLinePlayable, linePositions, theoryOptions, weightedPick } from './drill.js';
 
 describe('opening data', () => {
   it('contains only legal move sequences', () => {
@@ -57,6 +57,19 @@ describe('opening data', () => {
     expect(chooseTheoryMove(options,'common',()=>0.5).san).toBe('e5');
     expect(chooseTheoryMove(options,'wild',()=>0.75).san).toBe('c5');
   });
+  it('offers a line only to the side that actually gets a move in it', () => {
+    const onePly = { id:'one-ply', name:'One ply', moves:['c4'], repertoireColor:'white' };
+    expect(createDrill(onePly, 'black').prompts).toHaveLength(0);
+    expect(isLinePlayable(onePly, 'white')).toBe(true);
+    expect(isLinePlayable(onePly, 'black')).toBe(false);
+    const twoPly = { id:'two-ply', name:'Two plies', moves:['e4','e5'], repertoireColor:'white' };
+    expect(isLinePlayable(twoPly, 'black')).toBe(true);
+  });
+  it('matches createDrill for every catalog line and side', () => {
+    for (const line of allLines()) for (const color of ['white', 'black']) {
+      expect(isLinePlayable(line, color), line.id + ' as ' + color).toBe(createDrill(line, color).prompts.length > 0);
+    }
+  }, 30_000);
   it('shows the full opening name in drills without duplicating imported titles', () => {
     expect(drillTitle({openingName:'Ruy Lopez',name:'Closed'})).toBe('Ruy Lopez: Closed');
     expect(drillTitle({openingName:'Ruy Lopez',name:'Ruy Lopez: Closed'})).toBe('Ruy Lopez: Closed');
