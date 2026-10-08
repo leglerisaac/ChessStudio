@@ -78,6 +78,16 @@ describe('study-level line selection', () => {
     const english = OPENINGS.find(opening => opening.name === 'English Opening');
     expect(openingForLevel(english, 'beginner', false).lines.some(line => line.name === 'Main line')).toBe(true);
   });
+  it('describes each family with the number of lines the level shows', () => {
+    for (const level of STUDY_LEVELS) for (const showShortLines of [true, false]) {
+      const catalog = levelCatalogFor(OPENINGS, level, showShortLines);
+      expect(catalog.length).toBeGreaterThan(0);
+      for (const opening of catalog) {
+        expect(opening.description, opening.name + ' at ' + level).toContain(String(opening.lines.length));
+        expect(opening.description, opening.name + ' at ' + level).toContain(level);
+      }
+    }
+  });
   it('keeps every family at advanced level and hides only short sidelines', () => {
     const withShort = levelCatalogFor(OPENINGS, 'advanced', true);
     const withoutShort = levelCatalogFor(OPENINGS, 'advanced', false);
