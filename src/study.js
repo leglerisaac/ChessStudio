@@ -39,7 +39,10 @@ const byLengthThenName = (a, b) => a.moves.length - b.moves.length || a.name.loc
 export function openingForLevel(opening, level, showShortLines) {
   const custom = opening.id === CUSTOM_FAMILY;
   const keep = line => showShortLines || line.moves.length >= SHORT_LINE_PLY || line.name === 'Main line' || custom;
-  if (level === 'advanced') return { ...opening, lines:opening.lines.filter(keep) };
+  if (level === 'advanced') {
+    const lines = opening.lines.filter(keep);
+    return { ...opening, lines, description:LINE_DESCRIPTION(lines.length, level) };
+  }
   const allowed = level === 'beginner' ? BEGINNER_FAMILIES : INTERMEDIATE_FAMILIES;
   if (!custom && !allowed.has(opening.name)) return null;
   let lines = opening.lines.filter(keep);
