@@ -8,7 +8,7 @@ let store;
 
 beforeAll(async () => {
   vi.useFakeTimers();
-  store = new Map([['chessdrill-v2', JSON.stringify({ version:2, selected:['english-opening-main-line'], side:'white', level:'beginner', timerSeconds:2, expanded:[], stats:{}, positionStats:{}, lineRoles:{}, customLines:[] })]]);
+  store = new Map([['chessdrill-v2', JSON.stringify({ version:2, selected:['english-opening-main-line'], side:'white', level:'advanced', timerSeconds:2, expanded:[], stats:{}, positionStats:{}, lineRoles:{}, customLines:[] })]]);
   globalThis.localStorage = { getItem:key => (store.has(key) ? store.get(key) : null), setItem:(key, value) => store.set(key, String(value)), removeItem:key => store.delete(key) };
   globalThis.window = { setTimeout:(fn, ms) => setTimeout(fn, ms), scrollTo:() => {}, addEventListener:() => {}, removeEventListener:() => {} };
   globalThis.requestAnimationFrame = () => 0;
@@ -44,3 +44,4 @@ describe('drill clock', () => {
     expect(positions[0]).toMatchObject({ attempts:1, correct:0 });
   });
 });
+

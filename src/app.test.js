@@ -49,14 +49,17 @@ describe('application screens', () => {
     click({ action:'home' });
     change({ id:'', dataset:{ line:'english-opening-main-line' }, checked:true });
     click({ action:'level', id:'beginner' });
+    // A one-move catalog stub is outside the guided Beginner selection.
+    expect(app.innerHTML).toContain('Drill 0 lines');
+    click({ action:'level', id:'advanced' });
     change({ id:'side', value:'black', dataset:{} });
-    click({ action:'level', id:'beginner' });
+    click({ action:'level', id:'advanced' });
     expect(app.innerHTML).toContain('Drill 0 lines');
     expect(startButtons().every(disabled => disabled)).toBe(true);
     click({ action:'start' });
     expect(app.innerHTML).toContain('<h1>Openings</h1>');
     change({ id:'side', value:'white', dataset:{} });
-    click({ action:'level', id:'beginner' });
+    click({ action:'level', id:'advanced' });
     expect(app.innerHTML).toContain('Drill 1 line');
     expect(startButtons().some(disabled => !disabled)).toBe(true);
     change({ id:'', dataset:{ line:'english-opening-main-line' }, checked:false });
@@ -68,3 +71,4 @@ describe('application screens', () => {
     expect(app.innerHTML).toContain('<h1>Progress</h1>');
   });
 });
+
