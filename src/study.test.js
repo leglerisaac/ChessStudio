@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { OPENINGS } from './openings.js';
-import { BEGINNER_FAMILIES, DEFAULT_EXPANDED_FAMILY, INTERMEDIATE_FAMILIES, RECOMMENDATIONS, SHORT_LINE_PLY, STUDY_LEVELS, expandedFamilies, levelCatalogFor, missingFamilyReferences, missingIdReferences, openingForLevel } from './study.js';
+import { BEGINNER_ANCHORS, BEGINNER_FAMILIES, DEFAULT_EXPANDED_FAMILY, INTERMEDIATE_ANCHORS, INTERMEDIATE_FAMILIES, RECOMMENDATIONS, SHORT_LINE_PLY, STUDY_LEVELS, expandedFamilies, levelCatalogFor, missingAnchorReferences, missingFamilyReferences, missingIdReferences, openingForLevel } from './study.js';
 
 // The study levels are a documented promise, so the tests pin the promised numbers themselves
 // instead of reading them back out of the module under test.
-const BEGINNER_LINES = 8;
+const BEGINNER_LINES = 3;
 const INTERMEDIATE_LINES = 14;
 
 // Mirrors what main.js builds for imported PGN lines: a synthetic family outside the catalog.
@@ -26,6 +26,10 @@ describe('study-level catalog references', () => {
   });
   it('flags a stale expanded-family id instead of silently expanding nothing', () => {
     expect(missingIdReferences([{ id:'some-other-family' }])).toEqual([DEFAULT_EXPANDED_FAMILY]);
+  });
+  it('keeps every curated teaching anchor in the shipped catalog', () => {
+    expect(missingAnchorReferences(OPENINGS)).toEqual([]);
+    expect(missingAnchorReferences([{ id:'sicilian-defense', lines:[] }])).toContain('sicilian-defense-najdorf-variation-english-attack-2');
   });
   it('falls back to a family the catalog actually has when nothing is saved', () => {
     for (const saved of [undefined, null, []]) {
@@ -49,34 +53,51 @@ describe('study-level catalog references', () => {
 });
 
 describe('study-level line selection', () => {
-  it('limits beginners to the configured number of short lines from beginner families', () => {
+  it('limits beginners to short, representative lines in foundational families', () => {
     const catalog = levelCatalogFor(OPENINGS, 'beginner', false);
     expect(catalog.length).toBeGreaterThan(0);
     expect(catalog.length).toBeLessThan(OPENINGS.length);
     for (const opening of catalog) {
       expect(BEGINNER_FAMILIES.has(opening.name)).toBe(true);
       expect(opening.lines.length).toBeLessThanOrEqual(BEGINNER_LINES);
-      expect(opening.lines.every(line => line.moves.length <= 10 || line.name === 'Main line')).toBe(true);
+      expect(opening.lines.every(line => line.moves.length >= 8 && line.moves.length <= 12)).toBe(true);
       expect(opening.description).toContain(String(opening.lines.length));
       expect(opening.description).toContain('beginner');
     }
   });
-  it('caps intermediate families at the configured limit', () => {
+  it('includes every beginner line in Intermediate and caps the longer branches', () => {
     const catalog = levelCatalogFor(OPENINGS, 'intermediate', true);
     expect(catalog.length).toBeGreaterThan(0);
-    for (const opening of catalog) expect(opening.lines.length).toBeLessThanOrEqual(INTERMEDIATE_LINES);
+    for (const opening of catalog) {
+      expect(opening.lines.length).toBeLessThanOrEqual(INTERMEDIATE_LINES);
+      expect(opening.lines.every(line => line.moves.length <= 20)).toBe(true);
+    }
+    for (const opening of levelCatalogFor(OPENINGS, 'beginner', true)) {
+      const next = catalog.find(candidate => candidate.id === opening.id);
+      for (const line of opening.lines) expect(next.lines.map(item => item.id)).toContain(line.id);
+    }
   });
-  it('keeps a long main line at beginner level', () => {
-    const opening = { id:'italian-game', name:'Italian Game', lines:[
-      { id:'line-main', name:'Main line', moves:Array.from({ length:12 }, (_, i) => 'move' + i) },
-      { id:'line-sideline', name:'Long sideline', moves:Array.from({ length:8 }, (_, i) => 'move' + i) },
-    ] };
-    const names = openingForLevel(opening, 'beginner', false).lines.map(line => line.name);
-    expect(names).toEqual(['Long sideline', 'Main line']);
+  it('teaches the Najdorf main setup, English Attack, quiet 6.Be2, and 6.Bg5 at Intermediate', () => {
+    const beginner = levelCatalogFor(OPENINGS, 'beginner', false).find(opening => opening.id === 'sicilian-defense');
+    const intermediate = levelCatalogFor(OPENINGS, 'intermediate', false).find(opening => opening.id === 'sicilian-defense');
+    const advanced = levelCatalogFor(OPENINGS, 'advanced', false).find(opening => opening.id === 'sicilian-defense');
+    expect(beginner.lines.some(line => line.name.includes('Najdorf'))).toBe(false);
+    for (const id of INTERMEDIATE_ANCHORS['sicilian-defense'].slice(0, 4)) {
+      expect(intermediate.lines.map(line => line.id)).toContain(id);
+    }
+    const branches = intermediate.lines.filter(line => line.id.startsWith('sicilian-defense-najdorf-'));
+    expect(branches.map(line => line.moves[10])).toEqual(expect.arrayContaining(['Be3','Be2','Bg5']));
+    expect(intermediate.lines.some(line => /Poisoned Pawn|Polugaevsky/.test(line.name))).toBe(false);
+    expect(advanced.lines.some(line => /Poisoned Pawn/.test(line.name))).toBe(true);
   });
-  it('keeps a main line even when the level would hide short sidelines', () => {
-    const english = OPENINGS.find(opening => opening.name === 'English Opening');
-    expect(openingForLevel(english, 'beginner', false).lines.some(line => line.name === 'Main line')).toBe(true);
+  it('includes all declared teaching anchors in their levels', () => {
+    for (const [level, curriculum] of [['beginner', BEGINNER_ANCHORS], ['intermediate', INTERMEDIATE_ANCHORS]]) {
+      const catalog = levelCatalogFor(OPENINGS, level, false);
+      for (const [family, ids] of Object.entries(curriculum)) {
+        const actual = catalog.find(opening => opening.id === family)?.lines.map(line => line.id);
+        for (const id of ids) expect(actual, family + ' at ' + level).toContain(id);
+      }
+    }
   });
   it('describes each family with the number of lines the level shows', () => {
     for (const level of STUDY_LEVELS) for (const showShortLines of [true, false]) {
@@ -119,11 +140,13 @@ describe('study-level line selection', () => {
       expect(leveled.lines).toHaveLength(30);
     }
   });
-  it('keeps the main line of every family the level shows', () => {
-    for (const level of ['beginner','intermediate']) for (const showShortLines of [true, false]) {
-      const shown = levelCatalogFor(OPENINGS, level, showShortLines);
-      expect(shown.length).toBeGreaterThan(0);
-      for (const opening of shown) expect(opening.lines.some(line => line.name === 'Main line'), opening.name + ' at ' + level).toBe(true);
-    }
+  it('does not force a tiny generic main line into the guided levels', () => {
+    const opening = { id:'italian-game', name:'Italian Game', lines:[
+      { id:'line-main', name:'Main line', moves:['e4'] },
+      { id:'line-classical', name:'Classical variation', moves:Array(10).fill('e4') },
+    ] };
+    expect(openingForLevel(opening, 'beginner', false).lines.map(line => line.id)).toEqual(['line-classical']);
+    expect(openingForLevel(opening, 'advanced', false).lines.map(line => line.id)).toEqual(['line-main', 'line-classical']);
   });
 });
+

@@ -133,6 +133,35 @@ export const OPENING_LESSONS = [
     ],
   },
   {
+    id: 'najdorf', openingId: 'sicilian-defense', name: 'Sicilian Najdorf: English Attack', color: 'black', level: 'Intermediate',
+    tagline: 'Meet 6.Be3 with central space and active development.',
+    goal: 'Understand why ...a6 is flexible, when ...e5 gains time, and how ...Be6 prepares Black’s counterplay.',
+    plan: 'Secure b5 with ...a6, meet Be3 with ...e5, chase the d4 knight to b3, and develop the c8 bishop to e6.',
+    break: 'Look for ...d5 after development. White often aims for g4 and queenside castling, so queenside play must be timely.',
+    watch: 'The ...e5 pawn leaves d5 sensitive. Avoid automatic pawn pushes when White can exploit that square.',
+    moves: [
+      ['e4', 'White occupies the center.'],
+      ['c5', 'Attack d4 from the flank instead of mirroring White with ...e5.'],
+      ['Nf3', 'White develops and prepares d4.'],
+      ['d6', 'Control e5 and key central squares before the position opens.'],
+      ['d4', 'White challenges the center and offers an exchange.'],
+      ['cxd4', 'Exchange the c-pawn for White’s d-pawn and open the c-file.'],
+      ['Nxd4', 'White recaptures with a developed knight.'],
+      ['Nf6', 'Develop while attacking the e4 pawn.'],
+      ['Nc3', 'White protects e4.'],
+      ['a6', 'The Najdorf setup controls b5 and leaves Black flexible about the next central and queenside moves.'],
+      ['Be3', 'White reinforces d4 and can follow with f3, Qd2, queenside castling, and a kingside pawn storm.'],
+      ['e5', 'Gain space with tempo against the d4 knight. The knight must retreat, but Black accepts a sensitive d5 square.'],
+      ['Nb3', 'White preserves the knight and may later use d5 as an outpost.'],
+      ['Be6', 'Develop with an eye on d5 and prepare to finish development. Black needs active play before White’s attack arrives.'],
+      ['f3', 'White supports e4 and prepares Qd2 and queenside castling; Black should watch for a kingside pawn advance.'],
+    ],
+    quizzes: [
+      { at: 11, prompt: 'After 6.Be3, how can Black gain space while attacking the d4 knight?', options: ['e5', 'e6', 'g6'], hint: 'Move the e-pawn two squares while the knight is still on d4.', explanation: '...e5 gains a tempo on the knight and claims central space. It also weakens d5, so Black must develop actively.' },
+      { at: 13, prompt: 'After the knight retreats to b3, which developing move contests d5?', options: ['Be6', 'Be7', 'Nc6'], hint: 'Bring out the bishop from c8.', explanation: '...Be6 develops the bishop to watch d5 and supports Black’s central plan before White organizes an attack.' },
+    ],
+  },
+  {
     id: 'french', openingId: 'french-defense', name: 'French Defense', color: 'black', level: 'Beginner',
     tagline: 'Build a firm center, then attack its pawn-chain base.',
     goal: 'Support ...d5, invite White to commit the center, and challenge d4 with ...c5.',
@@ -226,7 +255,8 @@ export function matchingLessonLine(lesson, openings) {
 }
 
 export function openingLessonReason(line, ply) {
-  const lesson = OPENING_LESSONS.find(item => item.openingId === line.openingId &&
+  const lesson = OPENING_LESSONS.find(item => item.openingId === line.openingId && item.moves.length > ply &&
     item.moves.slice(0, ply + 1).every(([san], index) => line.moves[index] === san));
   return lesson?.moves[ply]?.[1] || null;
 }
+

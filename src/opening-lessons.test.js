@@ -30,6 +30,13 @@ describe('guided opening lessons', () => {
       expect(openingLessonReason(line,lesson.quizzes[0].at)).toBe(lesson.moves[lesson.quizzes[0].at][1]);
     }
   });
+  it('explains the deeper Najdorf moves rather than stopping at the general Sicilian setup', () => {
+    const najdorf = OPENING_LESSONS.find(lesson => lesson.id === 'najdorf');
+    const line = matchingLessonLine(najdorf, OPENINGS);
+    expect(line.id).toBe('sicilian-defense-najdorf-variation-english-attack-2');
+    expect(openingLessonReason(line, 11)).toContain('d5');
+    expect(openingLessonReason(line, 13)).toContain('d5');
+  });
 
   it('moves from a lesson through recall into the matching drill and saves completion', () => {
     vi.stubGlobal('window', { scrollTo:vi.fn() });
@@ -62,3 +69,4 @@ describe('guided opening lessons', () => {
     } finally { vi.unstubAllGlobals(); }
   });
 });
+
